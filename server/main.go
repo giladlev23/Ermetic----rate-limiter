@@ -31,7 +31,7 @@ var clientIDToLimiter = make(map[string]Limiter)
 
 func parseParameters() (int64, int64) {
 	var limiterSizeFlag = flag.Int64("s", defaultLimiterSize, "window size for rate limit (seconds)")
-	var limiterLimitFlag = flag.Int64("l", defaultLimiterLimit, "limit threshold")
+	var limiterLimitFlag = flag.Int64("r", defaultLimiterLimit, "rate limit")
 	flag.Parse()
 	return *limiterSizeFlag, *limiterLimitFlag
 }

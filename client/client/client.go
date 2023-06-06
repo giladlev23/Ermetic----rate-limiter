@@ -16,7 +16,8 @@ const clientIDParameterName = "clientid"
 
 type Client struct {
 	queryURL string
-	id       uuid.UUID
+	// Client.id has no purpose, but it seems right for me to have the ID available for future usage.
+	id uuid.UUID
 }
 
 func (c *Client) Run(ctx context.Context, wg *sync.WaitGroup) {
@@ -27,16 +28,9 @@ func (c *Client) Run(ctx context.Context, wg *sync.WaitGroup) {
 			return
 		default:
 			// For the exercise's purposes we don't care about the response/error received.
-			resp, err := http.Get(c.queryURL)
-			if err != nil {
-				fmt.Print(err)
-				continue
-			}
-			fmt.Printf("Status Code - %d\n", resp.StatusCode)
-			fmt.Printf("Status - %s\n", resp.Status)
+			_, _ = http.Get(c.queryURL)
 
-			n := rand.Intn(5000)
-			fmt.Printf("Sleeping %d milliseconds...\n\n", n)
+			n := rand.Intn(1000)
 			time.Sleep(time.Duration(n) * time.Millisecond)
 		}
 	}
@@ -50,11 +44,13 @@ func NewClient(url string) *Client {
 }
 
 func buildQuery(baseURL string, clientID string) string {
+	// This method is pretty specific for the given example in the exercise.
+	// Decided to leave it that way to simplify things in the exercise scope, instead of making it generic and
+	// receiving the full URL in NewClient.
 	params := url.Values{}
 	params.Add(clientIDParameterName, clientID)
 
 	u, _ := url.ParseRequestURI(baseURL)
-	// TODO: handle error
 	u.RawQuery = params.Encode()
 	return fmt.Sprintf("%v", u)
 }

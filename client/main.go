@@ -1,17 +1,16 @@
 package main
 
 import (
+	"client/client"
 	"context"
 	"flag"
 	"fmt"
 	"sync"
-
-	"client/client"
 )
 
 const (
-	defaultConcurrentClientCount = 3
 	defaultServerEndpointURL     = "http://localhost:8081/"
+	defaultConcurrentClientCount = 3
 )
 
 func parseParameters() (int, string) {
@@ -23,8 +22,6 @@ func parseParameters() (int, string) {
 
 func main() {
 	clientCount, serverEndpointURL := parseParameters()
-	fmt.Println(clientCount)
-	fmt.Println(serverEndpointURL)
 
 	wg := new(sync.WaitGroup)
 	ctx, cancel := context.WithCancel(context.Background())
