@@ -27,10 +27,13 @@ func (c *Client) Run(ctx context.Context, wg *sync.WaitGroup) {
 			wg.Done()
 			return
 		default:
-			// For the exercise's purposes we don't care about the response/error received.
-			_, _ = http.Get(c.queryURL)
+			// For the exercise's purposes we don't care about the error received.
+			resp, _ := http.Get(c.queryURL)
+			if resp != nil {
+				fmt.Printf("StatusCode - %d\n", resp.StatusCode)
+			}
 
-			n := rand.Intn(1000)
+			n := rand.Intn(5000)
 			time.Sleep(time.Duration(n) * time.Millisecond)
 		}
 	}
