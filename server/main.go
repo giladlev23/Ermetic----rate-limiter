@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/google/uuid"
 	"log"
 	"net/http"
 	"server/rate_limiter"
@@ -24,16 +25,37 @@ type Limiter interface {
 
 var clientIDToLimiter = make(map[string]Limiter)
 
+func parseParameters() (int64, int64) {
+	var limiterSizeFlag = flag.Int64("s", defaultLimiterSize, "window size for rate limit (seconds)")
+	var limiterLimitFlag = flag.Int64("l", defaultLimiterLimit, "limit threshold")
+	flag.Parse()
+	return *limiterSizeFlag, *limiterLimitFlag
+}
+
+func getClientID(w http.ResponseWriter, r *http.Request) string {
+	clientID := r.URL.Query().Get(clientIDParameterName)
+	if len(clientID) == 0 {
+		http.Error(w, fmt.Sprintf("'%s' parameter must be supplied.", clientIDParameterName), http.StatusUnprocessableEntity)
+		return ""
+	}
+
+	_, err := uuid.Parse(clientID)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("'%s' parameter must be valid UUID.", clientIDParameterName), http.StatusUnprocessableEntity)
+		return ""
+	}
+
+	return clientID
+}
+
 func handleRequest(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
 		http.Error(w, "404 not found.", http.StatusNotFound)
 		return
 	}
 
-	clientID := r.URL.Query().Get(clientIDParameterName)
-	// TODO: Add input validation
-	if len(clientID) == 0 {
-		http.Error(w, fmt.Sprintf("'%s' parameter must be supplied.", clientIDParameterName), http.StatusUnprocessableEntity)
+	clientID := getClientID(w, r)
+	if clientID == "" {
 		return
 	}
 
@@ -48,26 +70,17 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if allowed {
-		//w.WriteHeader(http.StatusOK)
-		http.Error(w, "200!", http.StatusOK)
+		w.WriteHeader(http.StatusOK)
 	} else {
-		//w.WriteHeader(http.StatusServiceUnavailable)
-		http.Error(w, "503!", http.StatusServiceUnavailable)
+		w.WriteHeader(http.StatusServiceUnavailable)
 	}
-}
-
-func parseParameters() (int64, int64) {
-	var limiterSizeFlag = flag.Int64("s", defaultLimiterSize, "window size for rate limit (seconds)")
-	var limiterLimitFlag = flag.Int64("l", defaultLimiterLimit, "limit threshold")
-	flag.Parse()
-	return *limiterSizeFlag, *limiterLimitFlag
 }
 
 func main() {
 	limiterSize, limiterLimit = parseParameters()
 
-	// TODO: Add concurrency
 	http.HandleFunc("/", handleRequest)
 
 	log.Fatal(http.ListenAndServe(":8081", nil))
+
 }
