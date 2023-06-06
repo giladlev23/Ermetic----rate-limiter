@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-type Window interface {
+type SlidingWindow interface {
 	Start() time.Time
 	Count() int64
 	AddCount()
@@ -15,24 +15,22 @@ type Window interface {
 func NewLimiter(size time.Duration, limit int64) *Limiter {
 	now := time.Now()
 
-	lim := &Limiter{
+	return &Limiter{
 		size:       size,
 		limit:      limit,
 		currWindow: NewWindow(now, 0),
 		prevWindow: NewWindow(now, 0),
 	}
-
-	return lim
 }
 
 type Limiter struct {
-	size  time.Duration
 	limit int64
+	size  time.Duration
 
 	mu sync.Mutex
 
-	currWindow Window
-	prevWindow Window
+	currWindow SlidingWindow
+	prevWindow SlidingWindow
 }
 
 func (lim *Limiter) Allow() bool {
@@ -41,7 +39,7 @@ func (lim *Limiter) Allow() bool {
 
 	now := time.Now()
 
-	lim.advance(now)
+	lim.advanceWindows(now)
 
 	durationSinceCurrWindowStart := now.Sub(lim.currWindow.Start())
 	prevWindowPart := float64(lim.size - durationSinceCurrWindowStart)
@@ -57,7 +55,7 @@ func (lim *Limiter) Allow() bool {
 	return true
 }
 
-func (lim *Limiter) advance(now time.Time) {
+func (lim *Limiter) advanceWindows(now time.Time) {
 	newCurrStart := now.Truncate(lim.size)
 	timeSinceLastWindow := newCurrStart.Sub(lim.currWindow.Start())
 	diff := timeSinceLastWindow - lim.size

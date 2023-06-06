@@ -13,22 +13,28 @@ const (
 	defaultConcurrentClientCount = 3
 )
 
-func parseParameters() (int, string) {
+type Params struct {
+	clientsCount      int
+	serverEndpointURL string
+}
+
+func parseParameters() *Params {
 	var clientsCountFlag = flag.Int("c", defaultConcurrentClientCount, "number of concurrent client to populate.")
 	var serverEndpointFlag = flag.String("u", defaultServerEndpointURL, "URL for the server endpoint.")
 	flag.Parse()
-	return *clientsCountFlag, *serverEndpointFlag
+
+	return &Params{*clientsCountFlag, *serverEndpointFlag}
 }
 
 func main() {
-	clientCount, serverEndpointURL := parseParameters()
+	params := parseParameters()
 
 	wg := new(sync.WaitGroup)
 	ctx, cancel := context.WithCancel(context.Background())
 
-	for i := 0; i < clientCount; i++ {
+	for i := 0; i < params.clientsCount; i++ {
 		wg.Add(1)
-		newClient := client.NewClient(serverEndpointURL)
+		newClient := client.NewClient(params.serverEndpointURL)
 		go newClient.Run(ctx, wg)
 	}
 

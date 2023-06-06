@@ -13,27 +13,32 @@ import (
 )
 
 const (
-	defaultServerPort           = 8081
-	shutdownSeconds             = 30
-	defaultLimiterSize    int64 = 5
-	defaultLimiterLimit   int64 = 5
+	shutdownSeconds   = 30
+	defaultServerPort = 8081
+
+	defaultRateLimit      int64 = 5
+	defaultWindowSize     int64 = 5
 	clientIDParameterName       = "clientid"
 )
 
-var limiterSize = defaultLimiterSize
-var limiterLimit = defaultLimiterLimit
+var params Params
+var clientIDToLimiter = make(map[string]Limiter)
 
 type Limiter interface {
 	Allow() bool
 }
 
-var clientIDToLimiter = make(map[string]Limiter)
+type Params struct {
+	rateLimit  int64
+	windowSize int64
+}
 
-func parseParameters() (int64, int64) {
-	var limiterSizeFlag = flag.Int64("s", defaultLimiterSize, "window size for rate limit (seconds)")
-	var limiterLimitFlag = flag.Int64("r", defaultLimiterLimit, "rate limit")
+func parseParameters() {
+	var rateLimitFlag = flag.Int64("r", defaultRateLimit, "rate limit")
+	var windowSizeFlag = flag.Int64("s", defaultWindowSize, "window size for rate limit (seconds)")
 	flag.Parse()
-	return *limiterSizeFlag, *limiterLimitFlag
+
+	params = Params{*rateLimitFlag, *windowSizeFlag}
 }
 
 func getClientID(w http.ResponseWriter, r *http.Request) string {
@@ -68,7 +73,7 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 	if limiter, ok := clientIDToLimiter[clientID]; ok {
 		allowed = limiter.Allow()
 	} else {
-		newLimiter := rate_limiter.NewLimiter(time.Duration(limiterSize)*time.Second, limiterLimit)
+		newLimiter := rate_limiter.NewLimiter(time.Duration(params.windowSize)*time.Second, params.rateLimit)
 		clientIDToLimiter[clientID] = newLimiter
 		allowed = newLimiter.Allow()
 	}
@@ -81,7 +86,7 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	limiterSize, limiterLimit = parseParameters()
+	parseParameters()
 
 	router := http.NewServeMux()
 	router.HandleFunc("/", handleRequest)
