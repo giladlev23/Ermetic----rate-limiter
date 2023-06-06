@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"server/rate_limiter"
+	"sync"
 	"time"
 )
 
@@ -16,13 +17,15 @@ const (
 	shutdownSeconds   = 30
 	defaultServerPort = 8081
 
-	defaultRateLimit      int64 = 5
-	defaultWindowSize     int64 = 5
-	clientIDParameterName       = "clientid"
+	defaultRateLimit  int64 = 5
+	defaultWindowSize int64 = 5
+
+	clientIDParameterName = "clientid"
 )
 
 var params Params
 var clientIDToLimiter = make(map[string]Limiter)
+var lock = sync.RWMutex{}
 
 type Limiter interface {
 	Allow() bool
@@ -70,11 +73,17 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 
 	allowed := false
 
-	if limiter, ok := clientIDToLimiter[clientID]; ok {
+	lock.RLock()
+	limiter, ok := clientIDToLimiter[clientID]
+	lock.RUnlock()
+
+	if ok {
 		allowed = limiter.Allow()
 	} else {
 		newLimiter := rate_limiter.NewLimiter(time.Duration(params.windowSize)*time.Second, params.rateLimit)
+		lock.Lock()
 		clientIDToLimiter[clientID] = newLimiter
+		lock.Unlock()
 		allowed = newLimiter.Allow()
 	}
 
