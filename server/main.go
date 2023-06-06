@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"github.com/google/uuid"
@@ -11,6 +13,8 @@ import (
 )
 
 const (
+	defaultServerPort           = 8081
+	shutdownSeconds             = 30
 	defaultLimiterSize    int64 = 5
 	defaultLimiterLimit   int64 = 5
 	clientIDParameterName       = "clientid"
@@ -79,8 +83,27 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 func main() {
 	limiterSize, limiterLimit = parseParameters()
 
-	http.HandleFunc("/", handleRequest)
+	router := http.NewServeMux()
+	router.HandleFunc("/", handleRequest)
 
-	log.Fatal(http.ListenAndServe(":8081", nil))
+	srv := &http.Server{
+		Addr:    fmt.Sprintf(":%d", defaultServerPort),
+		Handler: router,
+	}
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Fatal(err)
+		}
+	}()
 
+	fmt.Println("Press the Enter Key to stop anytime")
+	fmt.Scanln()
+
+	ctx, cancel := context.WithTimeout(context.Background(), shutdownSeconds*time.Second)
+	defer cancel()
+
+	fmt.Printf("Shutting Down...")
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Fatal(err)
+	}
 }
