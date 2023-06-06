@@ -11,7 +11,7 @@ import (
 
 const (
 	defaultLimiterSize    int64 = 5
-	defaultLimiterLimit   int64 = 2
+	defaultLimiterLimit   int64 = 5
 	clientIDParameterName       = "clientid"
 )
 

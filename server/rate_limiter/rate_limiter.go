@@ -43,9 +43,11 @@ func (lim *Limiter) Allow() bool {
 
 	lim.advance(now)
 
-	elapsed := now.Sub(lim.currWindow.Start())
-	weight := float64(lim.size-elapsed) / float64(lim.size)
-	count := int64(weight*float64(lim.prevWindow.Count())) + lim.currWindow.Count()
+	durationSinceCurrWindowStart := now.Sub(lim.currWindow.Start())
+	prevWindowPart := float64(lim.size - durationSinceCurrWindowStart)
+	prevWindowWeight := prevWindowPart / float64(lim.size)
+	prevWindowWeightedCount := int64(prevWindowWeight * float64(lim.prevWindow.Count()))
+	count := prevWindowWeightedCount + lim.currWindow.Count()
 
 	if count+1 > lim.limit {
 		return false
@@ -56,26 +58,18 @@ func (lim *Limiter) Allow() bool {
 }
 
 func (lim *Limiter) advance(now time.Time) {
-	// Calculate the start boundary of the expected current-window.
 	newCurrStart := now.Truncate(lim.size)
+	timeSinceLastWindow := newCurrStart.Sub(lim.currWindow.Start())
+	diff := timeSinceLastWindow - lim.size
 
-	diffSize := newCurrStart.Sub(lim.currWindow.Start()) / lim.size
-	if diffSize >= 1 {
-		// The current-window is at least one-window-size behind the expected one.
-
+	if diff >= 0 {
 		newPrevCount := int64(0)
-		if diffSize == 1 {
-			// The new previous-window will overlap with the old current-window,
-			// so it inherits the count.
-			//
-			// Note that the count here may be not accurate, since it is only a
-			// SNAPSHOT of the current-window's count, which in itself tends to
-			// be inaccurate due to the asynchronous nature of the sync behaviour.
+		if diff == 0 {
+			// Exactly overlapping windows
 			newPrevCount = lim.currWindow.Count()
 		}
-		lim.prevWindow.Set(newCurrStart.Add(-lim.size), newPrevCount)
 
-		// The new current-window always has zero count.
+		lim.prevWindow.Set(newCurrStart.Add(-lim.size), newPrevCount)
 		lim.currWindow.Set(newCurrStart, 0)
 	}
 }
