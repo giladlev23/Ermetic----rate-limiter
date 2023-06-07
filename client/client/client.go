@@ -18,9 +18,9 @@ type Client struct {
 	queryURL string
 	// Client.id has no purpose, but it seems right for me to have the ID available for future usage.
 	id uuid.UUID
-	// Client.waitIntervalRandomRange is here just for exercise testing purposes in order to make it easier for the
+	// Client.waitIntervalRandomRangeMilliseconds is here just for exercise testing purposes in order to make it easier for the
 	// tester to control, otherwise it should have been a const and not a struct field.
-	waitIntervalRandomRange int
+	waitIntervalRandomRangeMilliseconds int
 }
 
 func (c *Client) Run(ctx context.Context, wg *sync.WaitGroup) {
@@ -37,18 +37,18 @@ func (c *Client) Run(ctx context.Context, wg *sync.WaitGroup) {
 				fmt.Printf("StatusCode - %d\n", resp.StatusCode)
 			}
 
-			n := rand.Intn(c.waitIntervalRandomRange)
+			n := rand.Intn(c.waitIntervalRandomRangeMilliseconds)
 			time.Sleep(time.Duration(n) * time.Millisecond)
 		}
 	}
 }
 
-func NewClient(url string, waitIntervalRandomRange int) *Client {
+func NewClient(url string, waitIntervalRandomRangeMilliseconds int) *Client {
 	clientID := uuid.New()
 	queryURL := buildQuery(url, clientID.String())
 	return &Client{id: clientID,
-		queryURL:                queryURL,
-		waitIntervalRandomRange: waitIntervalRandomRange}
+		queryURL:                            queryURL,
+		waitIntervalRandomRangeMilliseconds: waitIntervalRandomRangeMilliseconds}
 }
 
 func buildQuery(baseURL string, clientID string) string {
