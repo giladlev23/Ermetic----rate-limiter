@@ -33,10 +33,10 @@ type Limiter struct {
 }
 
 func (l *Limiter) Allow() bool {
+	now := time.Now()
+
 	l.mu.Lock()
 	defer l.mu.Unlock()
-
-	now := time.Now()
 
 	l.advanceWindow(now)
 
