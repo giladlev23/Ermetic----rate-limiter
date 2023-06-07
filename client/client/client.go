@@ -16,7 +16,7 @@ const clientIDParameterName = "clientid"
 
 type Client struct {
 	queryURL string
-	// Client.id has no purpose, but it seems right for me to have the ID available for future usage.
+	// Client.id has no actual purpose currently, but it seems right for me to have the ID available for future usage.
 	id uuid.UUID
 	// Client.waitIntervalRandomRangeMilliseconds is here just for exercise testing purposes in order to make it easier for the
 	// tester to control, otherwise it should have been a const and not a struct field.
@@ -55,6 +55,7 @@ func buildQuery(baseURL string, clientID string) string {
 	// This method is pretty specific for the given example in the exercise.
 	// Decided to leave it that way to simplify things in the exercise scope, instead of making it generic and
 	// supporting different types of URL formatting or receiving the full URL in NewClient.
+	// Note - that is the reason it is implemented here and not in a generic utils package.
 	params := url.Values{}
 	params.Add(clientIDParameterName, clientID)
 

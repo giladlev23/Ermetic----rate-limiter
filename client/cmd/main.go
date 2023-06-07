@@ -10,7 +10,7 @@ import (
 
 const (
 	defaultServerEndpointURL                   = "http://localhost:8081/"
-	defaultConcurrentClientCount               = 3
+	defaultConcurrentClientCount               = 1
 	defaultWaitIntervalRandomRangeMilliseconds = 1000
 )
 
