@@ -19,7 +19,7 @@ func NewLimiter(size time.Duration, limit int64) *Limiter {
 	return &Limiter{
 		size:   size,
 		limit:  limit,
-		window: NewWindow(now, 0, 0),
+		window: newWindow(now, 0, 0),
 	}
 }
 
