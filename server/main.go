@@ -44,20 +44,19 @@ func parseParameters() {
 	params = Params{*rateLimitFlag, *windowSizeFlag}
 }
 
-func getClientID(w http.ResponseWriter, r *http.Request) string {
+func parseClientID(r *http.Request) (string, error) {
 	clientID := r.URL.Query().Get(clientIDParameterName)
+
 	if len(clientID) == 0 {
-		http.Error(w, fmt.Sprintf("'%s' parameter must be supplied.", clientIDParameterName), http.StatusUnprocessableEntity)
-		return ""
+		return "", errors.New(fmt.Sprintf("'%s' parameter must be supplied.", clientIDParameterName))
 	}
 
 	_, err := uuid.Parse(clientID)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("'%s' parameter must be valid UUID.", clientIDParameterName), http.StatusUnprocessableEntity)
-		return ""
+		return "", errors.New(fmt.Sprintf("'%s' parameter must be valid UUID.", clientIDParameterName))
 	}
 
-	return clientID
+	return clientID, nil
 }
 
 func handleRequest(w http.ResponseWriter, r *http.Request) {
@@ -66,8 +65,9 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	clientID := getClientID(w, r)
-	if clientID == "" {
+	clientID, err := parseClientID(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
 		return
 	}
 

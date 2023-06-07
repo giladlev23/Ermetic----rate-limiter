@@ -8,18 +8,18 @@ import (
 type SlidingWindow interface {
 	Start() time.Time
 	Count() int64
+	PrevCount() int64
 	AddCount()
-	Set(s time.Time, c int64)
+	Set(start time.Time, count int64, prevCount int64)
 }
 
 func NewLimiter(size time.Duration, limit int64) *Limiter {
 	now := time.Now()
 
 	return &Limiter{
-		size:       size,
-		limit:      limit,
-		currWindow: NewWindow(now, 0),
-		prevWindow: NewWindow(now, 0),
+		size:   size,
+		limit:  limit,
+		window: NewWindow(now, 0, 0),
 	}
 }
 
@@ -29,45 +29,34 @@ type Limiter struct {
 
 	mu sync.Mutex
 
-	currWindow SlidingWindow
-	prevWindow SlidingWindow
+	window SlidingWindow
 }
 
-func (lim *Limiter) Allow() bool {
-	lim.mu.Lock()
-	defer lim.mu.Unlock()
+func (l *Limiter) Allow() bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
 
 	now := time.Now()
 
-	lim.advanceWindows(now)
+	l.advanceWindow(now)
 
-	durationSinceCurrWindowStart := now.Sub(lim.currWindow.Start())
-	prevWindowPart := float64(lim.size - durationSinceCurrWindowStart)
-	prevWindowWeight := prevWindowPart / float64(lim.size)
-	prevWindowWeightedCount := int64(prevWindowWeight * float64(lim.prevWindow.Count()))
-	count := prevWindowWeightedCount + lim.currWindow.Count()
+	timeIntoCurrentWindow := now.Sub(l.window.Start())
+	prevWindowPart := l.size - timeIntoCurrentWindow
+	prevWindowWeight := float64(prevWindowPart) / float64(l.size)
+	prevWindowWeightedCount := int64(prevWindowWeight * float64(l.window.PrevCount()))
+	count := prevWindowWeightedCount + l.window.Count()
 
-	if count+1 > lim.limit {
+	if count+1 > l.limit {
 		return false
 	}
 
-	lim.currWindow.AddCount()
+	l.window.AddCount()
 	return true
 }
 
-func (lim *Limiter) advanceWindows(now time.Time) {
-	newCurrStart := now.Truncate(lim.size)
-	timeSinceLastWindow := newCurrStart.Sub(lim.currWindow.Start())
-	diff := timeSinceLastWindow - lim.size
-
-	if diff >= 0 {
-		newPrevCount := int64(0)
-		if diff == 0 {
-			// Exactly overlapping windows
-			newPrevCount = lim.currWindow.Count()
-		}
-
-		lim.prevWindow.Set(newCurrStart.Add(-lim.size), newPrevCount)
-		lim.currWindow.Set(newCurrStart, 0)
+func (l *Limiter) advanceWindow(now time.Time) {
+	if now.Sub(l.window.Start()) > l.size {
+		currCount := l.window.Count()
+		l.window.Set(now, 0, currCount)
 	}
 }
